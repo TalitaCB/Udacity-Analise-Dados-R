@@ -1,0 +1,983 @@
+---
+output: 
+  html_document: 
+    fig_width: 10
+---
+Wines Exploration by Talita_Barcelos
+========================================================
+
+Este relatório explora uma base contendo qualidade e atributos quimicos de aproximadamente 6497 vinhos sendo eles tintos e brancos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(scales)
+library('corrplot')
+library('psych')
+library(RColorBrewer)
+library(gridExtra)
+library(clusterSim)
+library(colorRamps)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+
+red_wine <- read.csv("D:/Talita/Pessoal/Udacity/R Codes/Projeto Final/wineQualityReds.csv", header = TRUE, sep = ",", quote = "\"",
+         dec = ".", fill = TRUE, comment.char = "")
+white_wine <- read.csv("D:/Talita/Pessoal/Udacity/R Codes/Projeto Final/wineQualityWhites.csv", header = TRUE, sep = ",", quote = "\"",
+         dec = ".", fill = TRUE, comment.char = "")
+
+red_wine$tipo_vinho <- "Tinto"
+white_wine$tipo_vinho <- "Branco"
+#Juntando as duas bases em uma base apenas
+wines <- union(red_wine,white_wine)
+
+
+```
+
+# Univariate Plots Section
+```{r echo=FALSE, Univariate_Plots}
+
+#Verificando tamanho da base de dados
+str(wines)
+summary(wines)
+
+```
+
+Existem 6497 objetos em 14 variáveis.Vou avaliar a distribuição da qualidade dos preços:
+
+```{r echo=FALSE, Univariate_Plots1}
+
+#gerando frequencyplot por tipo de vinho
+ggplot(data=wines, aes(quality)) +
+  geom_histogram()
+
+#ajustando tamanho das barras para melhor visualização
+ggplot(data=wines, aes(quality)) +
+  geom_histogram(binwidth = 1)
+
+summary(wines$quality)
+
+```
+
+A qualidade apresenta ua distribuição quase normal com o pico mais para o lado esquerdo. As pontuações de qualidade variam de 0 a 10 sendo 10 o de melhor qualidade. A média de qualidade é 5,818 que pode ser observada no gráfico. Não existem vinhos avaliados com 0 e nem com 10, todos ficam com pontuação entre 3 e 9. Analisando Fixed Acidity:
+
+```{r echo=FALSE, Univariate_Plots2}
+
+#gerando frequencyplot por Fixed Acidity:
+ggplot(data=wines, aes(fixed.acidity)) +
+  geom_histogram()
+
+ggplot(data=wines, aes(fixed.acidity)) +
+  geom_histogram() +
+  scale_x_log10()
+
+```
+
+O Fixed Acidity tem uma média de 7. Ele varia de 3,8 e 15,9.A distribuição dele é desviado para a direita. Após aplicar transformação por log vemos uma distribuição mais normalizada.
+
+```{r echo=FALSE, Univariate_Plots3}
+
+#gerando frequencyplot por volatile.acidity
+ggplot(data=wines, aes(volatile.acidity)) +
+  geom_histogram() +
+  scale_x_log10()
+
+
+```
+
+O volatile.acidity tem uma média de 0,3. A distribuição dele é desviado para a direita.Após transformação por log vejo uma distribuição mais normalizada, quase bimodal.
+
+```{r echo=FALSE, Univariate_Plots4}
+
+#gerando frequencyplot por citric.acid
+ggplot(data=wines, aes(citric.acid)) +
+  geom_histogram()
+
+
+```
+
+O citric acid tem uma média de 0,31 e varia de 0 a 1,66. A distribuição dele á desviada para a direita. Parece haver algum outlier na faixa entre 1,0  e 1,66. Vou dar um zoom no outlier
+
+```{r echo=FALSE, Univariate_Plots4.1}
+
+wines[which(wines$citric.acid > 1.0), ]
+wines$outlier <- "Nâo"
+wines$outlier[which(wines$citric.acid > 1.0)] <- 'Sim'
+
+```
+
+São dois outliers mas avaliando cada caracteristica deles eles não parecem ser problemas de dados.
+
+```{r echo=FALSE, Univariate_Plots5}
+
+#gerando frequencyplot por residual.sugar
+ggplot(data=wines, aes(residual.sugar)) +
+  geom_histogram()
+
+ggplot(data=wines, aes(residual.sugar)) +
+  geom_histogram() +
+  scale_x_log10()
+
+```
+
+O residual.sugar tem uma média de 5,44 e varia entre 0,6 e 65. Entre 20 e 60 parece haver outliers,a maior concentração de açucar residual fia entre 1 e 3. Após transformação por log a distribuição do açucar parece ser bimodal. Vou dar um zoom no outlier:
+
+```{r echo=FALSE, Univariate_Plots5.1}
+
+
+wines[which(wines$residual.sugar > 30), ]
+wines$outlier[which(wines$residual.sugar > 30)] <- 'Sim'
+
+```
+
+São três outliers do tipo vinho branco. No entanto avaliando cada caracteristica deles eles não parecem ser problemas de dados.
+
+```{r echo=FALSE, Univariate_Plots6}
+
+#gerando frequencyplot por  chlorides
+ggplot(data=wines, aes( chlorides)) +
+  geom_histogram()
+
+
+ggplot(data=wines, aes( chlorides)) +
+  geom_histogram() +
+  scale_x_log10()
+
+```
+
+O chlorides tem uma média de 0,05 e varia entr 0,009 e 0,611. A distribuição dele tem um desvio para direita.Após transformação por log podemos ver uma distribuição normal quase bimodal. Parece haver um outlier entre 0,4 e 0,6. Vou dar um zoom nesse outlier:
+
+```{r echo=FALSE, Univariate_Plots6.1}
+
+wines[which(wines$chlorides > 0.5), ]
+wines$outlier[which(wines$chlorides > 0.5)] <- 'Sim'
+
+
+```
+
+São dois outliers de vinho tinto. Avaliando cada caracteristica deles eles não parecem ser problemas de dados.
+
+```{r echo=FALSE, Univariate_Plots7}
+
+#gerando frequencyplot por free.sulfur.dioxide
+ggplot(data=wines, aes(free.sulfur.dioxide)) +
+  geom_histogram()
+
+
+```
+
+O free.sulfur.dioxide tem uma média de 30,53 e varia entre 1 e 289. O pico de concentração dele fica entre 20 e 30. Parece haver um outlier entre 150 e 300. Vou verificar esse outlier:
+
+```{r echo=FALSE, Univariate_Plots7.1}
+
+
+wines[which(wines$free.sulfur.dioxide > 150), ]
+wines$outlier[which(wines$free.sulfur.dioxide > 150)] <- 'Sim'
+
+```
+
+Existe um outlier do tipo vinho branco, avaliando suas caracteristicas ele não parece ser um problema de dados.
+
+```{r echo=FALSE, Univariate_Plots8}
+
+#gerando frequencyplot por total.sulfur.dioxide
+ggplot(data=wines, aes(total.sulfur.dioxide)) +
+  geom_histogram()
+
+
+```
+
+O total.sulfur.dioxide tem uma média de 115,7  e varia entre 6 e 440. Seu pico fica entre 120 e 150 e ele tem uma distribuição desviada para a direita. 
+
+```{r echo=FALSE, Univariate_Plots9}
+
+#gerando frequencyplot por density
+ggplot(data=wines, aes(density)) +
+  geom_histogram()
+
+
+```
+
+A densidade tem uma média de 0,99 e varia entre 0,98 e 1,03. Parece haver um outlier entre 1,01 e 1,03. Vou verificar esse outlier:
+
+```{r echo=FALSE, Univariate_Plots9.1}
+
+
+wines[which(wines$density > 1.02), ]
+wines$outlier[which(wines$density > 1.02)] <- "Sim"
+
+```
+
+É o mesmo outlier avaliado na caracteristica de total.sulfur.dioxide e na residual sugar.
+
+```{r echo=FALSE, Univariate_Plots10}
+
+#gerando frequencyplot por pH
+ggplot(data=wines, aes(pH)) +
+  geom_histogram()
+
+```
+
+O ph tem uma média de 3,21 e varia entre 2,72 e 4,0. Segundo a Revista Adega vinhos são naturalmente acidos, a maioria indo de 2,8 a 4 e isso é percebido nessa base. O ph possui uma distribuição normal.
+
+```{r echo=FALSE, Univariate_Plots11}
+
+#gerando frequencyplot por  sulphates
+ggplot(data=wines, aes(sulphates)) +
+  geom_histogram()
+
+ggplot(data=wines, aes(sulphates)) +
+  geom_histogram()+
+  scale_x_continuous(trans = log10_trans())
+
+```
+
+Os sulfatos tem uma média de 0,53 e variam de 0,22 e 2,0. Sua distribuição é desviada para direita. Após transformação por log podemos ver uma distribuição mais normalizada.
+
+```{r echo=FALSE, Univariate_Plots12}
+
+#gerando frequencyplot por alcohol
+ggplot(data=wines, aes(alcohol)) +
+  geom_histogram()
+
+ggplot(data=wines, aes(alcohol)) +
+  geom_histogram() +
+  scale_x_sqrt()
+
+
+```
+
+O Alcool tem uma média de 10,49 e varia de 8 a 14,90. Segundo a revista Adega a uva está madura para o vinho quando seu potencial alcoolico se situa etnre 11% e 13% de volume. Após a transformação por square root vamos uma distribuição multimodal.
+
+```{r echo=FALSE, Univariate_Plots13}
+
+#gerando frequencyplot por tipo_vinho
+ggplot(data=wines, aes(tipo_vinho)) +
+  geom_histogram(stat="count")
+
+```
+
+Existem dois tipos de vinho. Branco e Tinto. Nessa base existem mais registros de vinhos brancos do que tintos. São 4898 de vinhos tintos e 1599 de vinhos brancos. Vou avaliar a qualidade de vinhos brancos e de vinhos tintos.
+
+```{r echo=FALSE, Univariate_Plots14}
+
+#gerando frequencyplot quaildade o vinho Tinto
+ggplot(data=subset(wines, tipo_vinho == 'Tinto'), aes(quality)) +
+  geom_histogram(binwidth = 1) +
+  ggtitle("Qualidade Vinho Tinto")
+
+summary(subset(wines, tipo_vinho == 'Tinto')$quality)
+
+```
+
+A qualidade dos vinhos tintos segue uma distribuição normal. A qualidade máxima é 8. 
+
+```{r echo=FALSE, Univariate_Plots14.1}
+
+#gerando frequencyplot quaildade o vinho Branco
+ggplot(data=subset(wines, tipo_vinho == 'Branco'), aes(quality)) +
+  geom_histogram(binwidth = 1) +
+    ggtitle("Qualidade Vinho Branco")
+
+summary(subset(wines, tipo_vinho == 'Branco')$quality)
+```
+
+A qualidade dos vinhos brancos também segue uma distribuição normal um pouco mais equilibrada do que as de vinho tinto. Apesar de sua média ser bem proxima das dos vinhos tintos ele tem vinhos com qualidade avaliada de 9 pontos enquanto os vinhos tintos chegam apenas até 8.
+
+Verificando todas as variáveis vou criar uma variável com o total de acidos dentro do vinho. Isso em faz pensar se o total de acido contribui para o resultado de ph e consequentemente na qualidade do vinho.
+
+```{r echo=FALSE, Univariate_Plots15}
+
+
+
+wines$total_acidos <- (wines$fixed.acidity + wines$volatile.acidity + wines$fixed.acidity)
+
+#gerando frequencyplot por tipo_vinho
+ggplot(data=wines, aes(total_acidos)) +
+  geom_histogram()
+
+#gerando frequencyplot por tipo_vinho
+ggplot(data=wines, aes(total_acidos)) +
+  geom_histogram() +
+  scale_x_continuous(trans = log10_trans())
+
+summary(wines$total_acidos)
+
+```
+
+O total de acidos vai de 7,91 a 32,16. A distribuição é desviada para direita. Após transformação por log temos uma distribuição normal.
+
+Segundo o site Segredos do Vinho é possivel classificar o teor de açucar do vinho e densidade. Vou criar esse novo campo:
+
+```{r echo=FALSE, Univariate_Plots16}
+
+wines$classe[which(wines$residual.sugar >= 5,wines$residual.sugar <= 20)] <- 'Meio Seco'
+wines$classe[which(wines$residual.sugar <= 5)] <- 'Seco'
+wines$classe[which(wines$residual.sugar >= 20 )] <- 'Doce'
+
+#gerando grafico classe de vinho
+ggplot(data=wines, aes(classe)) +
+  geom_histogram(stat="count")
+
+```
+
+Existem poucos vinhos doces e muitos vinhos secos na base. Quero criar duas caracteristicas que indicam a relação entre Alcool e Acidez já que no preparo do vinho esses dois componentes são elementos chaves.
+
+```{r echo=FALSE, Univariate_Plots17}
+
+wines$indicador_acidez <- wines$total_acidos/wines$alcohol
+
+#gerando grafico classe de vinho
+ggplot(data=wines, aes(indicador_acidez)) +
+  geom_histogram() 
+
+ggplot(data=wines, aes(indicador_acidez)) +
+  geom_histogram() +
+  scale_x_continuous(trans = log10_trans())
+```
+
+A distribuição é normal com desvio para direita. Ao aplicar log no eixo y para melhor visualizar os dados é possivel verificar uma distribuição normal. Vou verificar como é a distribuição da qualidade nos vinhos considerados Meio Secos
+
+```{r echo=FALSE, Univariate_Plots18}
+
+
+#gerando grafico classe de vinho
+ggplot(data=subset(wines, classe == 'Doce'), aes(quality)) +
+  geom_histogram(stat="count")  +
+    ggtitle("Qualidade Vinho Doce")
+
+#gerando grafico classe de vinho
+ggplot(data=subset(wines, classe == 'Seco'), aes(quality)) +
+  geom_histogram(binwidth = 1,stat="count") +
+    ggtitle("Qualidade Vinho Seco")
+
+#gerando grafico classe de vinho
+ggplot(data=subset(wines, classe == 'Meio Seco'), aes(quality)) +
+  geom_histogram(binwidth = 1,stat="count") +
+    ggtitle("Qualidade Vinho Meio Seco")
+
+
+```
+
+Os poucos vinhos doces que existem na base são bem avaliados. Isso poderia ser um indicativo de qualidade mas como são poucos vinhos fica dificil validar a amostra. A distribuição dos vinhos Meio Seco e Seco é normal. Nas proximas etapas voltarei a analise a qualidade em plots de densidade por acidez e açucar.
+
+Fiquei pensando se os outliers encontrados podem indicar exatamente problemas de qualidade. Nos próximos passos vou avaliar essa relação.
+
+# Univariate Analysis
+
+
+### What is the structure of your dataset?
+
+Existem 6497 objetos em 12 features  (Acidez fixa, acidez volatil, acidez citrica, açucar residual, cloridios, dioxido de sulfureto livre, dioxido de sulfureto total, densidade, ph, sulfatos, alcohol e tipo de vinho).
+
+Desses 6497 vinhos, 75% é vinho tinto.
+A média de qualidade geral dos vinhos é 5,818. Não existem vinhos avaliados com 0 e nem com 10
+A maioria dos vinhos é seco, ou seja, possui uma quantidade de açucar residual menor do que 5.
+O ph dos vinhos varia de 2,72 e 4,0. Vinhos são naturamente ácidos e isso se reflete na base.
+A média de Alcool é de 10,49 
+
+### What is/are the main feature(s) of interest in your dataset?
+
+As principais caracteristicas deste dataset são qualidade, ph, Alcool e Açucar. Eu gostaria de determinar quais carateristicas são as melhores para prever a qualidade de um vinho, eu suspeito que a combinação dessas três caracteristicas podem ser usadas para fazer a previsão.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+Total de Acidez
+Total de Dioxido de Sulfureto
+Densidade
+Total de Cloreto de Sódio
+
+Essas caracteristicam podem contribuir na qualidade mas acredito que Total de Acidez e densidade contribuam mais.
+
+### Did you create any new variables from existing variables in the dataset?
+
+Eu criei a caracteristica de Total de Acidos onde somei os três tipos de acidos existentes na base: Acidez fixa, acidez volatil e acido citrico. Acidez diz muito sobre um vinho já que o mesmo precisa ter um equilibrio entre alcool e acidez. Por esse motivo criei um indicador que calcula a quantidade de acidez por % de Alcool. 
+
+
+Também criei uma classificação para o vinhos em seco, meio seco e suave com base na quantidade de açucar. Vinhos com açucar abaixo de 5g/l são considerados secos, vinho com quantidade de açucar entre 5 e 20 são meio secos e vinhos com mais  de 20g/l de açucar são considerados suaves.
+
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+Sim, o total de acidez tinha um desvio para a direita, eu fiz transformação de log dessa variável e a distribuição ficou normal. O mesmo ocorreu para o Dioxido de sulfureto total, Indicador de acidez e Sulfatos total.
+
+
+# Bivariate Plots Section
+```{r echo=FALSE, Bivariate_Plots}
+cor(wines[sapply(wines, is.numeric)])
+corrplot(cor(wines[sapply(wines, is.numeric)]), method = "circle")
+#pairs.panels(wines[sapply(wines, is.numeric)])
+```
+
+Nenhuma variável sozinha tem uma correlação muito forte com qualidade. As correlações mais fortes encontradas entre as caracteristicas foram alcool com densidade, total de dioxido sulfurico e indicador de acidez, densidade. Vou avaliar a correlação de qualidade com as principais caracteristicas. Primeiro verificando qualidade x alcool:
+
+```{r echo=FALSE, Bivariate_Plots1}
+ggplot(data=wines, aes(y=alcohol, x = factor(quality))) +
+  geom_boxplot() +
+  scale_y_sqrt()
+
+```
+
+Percebo que a partir da qualidade avaliada em 6 (e poderiamos dizer que bons vinhos devem ter nota no minimo 6) o valor minimo de alcool aumenta conforme a qualidade aumenta. Para qualidade com nota 9 (maior nota no dataset) a variação é muito pequena na quantidade de alcool, varia entre 12 e 13(isso pode acontecer pois poucos vinhos tem essa nota). Também percebo que para notas de qualidade de 3 a 5 o valor médio do alcool vai caindo e partir de 6 vai aumentando. Então entendo que não existe uma correlaçao direta de quanto maior a quantidade de alcool maior a média qualidade do vinho, apenas a partir da nota 6 isso parece ser verdadeiro. A nota 5 é a nota com menor quantidade média de alcool e também a nota que possui mais outliers com altos valores de alcool.Estou me perguntando qual outra caracteristiaca pode estar influenciando nessa correlação entre alcool e qualidade. 
+
+
+
+```{r echo=FALSE, Bivariate_Plots2}
+ggplot(data=wines, aes(y=pH, x = factor(quality))) +
+  geom_boxplot()
+
+```
+
+A lógica para ph parece ser a mesma do alcool. A partir da nota 5 a média de ph vai aumentando conforme a nota de qualidade aumenta, sendo a variação da nota 9 a menor. Já com as notas mais baixas, 3 a 5, a média vai caindo conforme a nota vai aumentando. Ou seja, ph mais alto deixa a qualidade do vinho muito boa ou muito ruim. Deve haver outra caracteristica influenciando na qualidade.
+
+```{r echo=FALSE, Bivariate_Plots3}
+ggplot(data=wines, aes(y=residual.sugar, x = factor(quality))) +
+  geom_boxplot() +
+  scale_y_log10()
+```
+
+Não consegui identificar nenhum padrão no açucar. Como o açucar é diferente para vinhos brancos e tintos vou gerar um gráfico para cada tipo de vinho:
+
+```{r echo=FALSE, Bivariate_Plots4}
+
+ggplot(data=subset(wines, tipo_vinho == "Tinto"), aes(y=residual.sugar, x = factor(quality))) +
+  geom_boxplot()  +
+  scale_y_log10() +
+  ggtitle("Qualidade vs Açucar Vinho Tinto")
+
+ggplot(data=subset(wines, tipo_vinho == "Branco" & residual.sugar <= 40), aes(y=residual.sugar, x = factor(quality))) +
+  geom_boxplot() +
+  scale_y_log10() +
+  ggtitle("Qualidade vs Açucar Vinho Branco")
+
+```
+
+Percebe-se que nos vinhos tintos a média de açucar é quase a mesma para todas as pontuações de qualidade. Também percebo que existem muitos outliers. Já nos vinhos rancos existe uma diferença considerávelda média de açucar para as diferentes pontuação de qualidade. A partir da nota 5 os valores de açucar começam a cair conforme a nota aumenta. No entanto a média da nota 8 é ligeiramente maior do que a média da nota 7.
+
+```{r echo=FALSE, Bivariate_Plots5}
+
+
+ggplot(data=wines, aes(y=total_acidos, x = factor(quality))) +
+  geom_boxplot() 
+
+
+ggplot(data=wines, aes(y=total_acidos, x = factor(quality))) +
+  geom_boxplot()  +
+  scale_y_continuous(trans = log10_trans())
+
+```
+
+A variação de total de acidos parece diminuir conforme a nota aumenta. A média é praticamente a mesma entre as notas 6,7 e 8. 
+
+```{r echo=FALSE, Bivariate_Plots6}
+
+
+ggplot(data=wines, aes(y=density, x = factor(quality))) +
+  geom_boxplot() 
+
+ggplot(data=wines, aes(y=density, x = factor(quality))) +
+  geom_boxplot() +
+  ylim(0.985,1.015)
+
+```
+
+Após alterar o limite do eixo y fica perceptivel que partir da nota 5 a média de densidade vai caindo, sendo que a menor média é da nota 9. Parece o mesmo comportamento do Alcool e Ph.
+
+```{r echo=FALSE, Bivariate_Plots7}
+
+
+ggplot(data=wines, aes(y=indicador_acidez, x = factor(quality))) +
+  geom_boxplot() +
+  scale_y_log10()
+
+```
+
+Apresenta o mesmo comportamento do Álcool, conforme a nota aumenta a média do indicador de acidez vai caindo a partir da nota 5.
+
+```{r echo=FALSE, Bivariate_Plots8}
+
+ggplot(data=wines, aes(y=density, x = alcohol)) +
+  geom_point(alpha = 0.5, size = 1.5,position = "jitter" )  +
+  scale_x_sqrt() +
+  ylim(0.985,1.005) +
+  geom_smooth(method = lm)
+  
+
+```
+
+Parece haver uma correlação entre alcool e densidade no entanto os valores para densidade variam muito para cada valor de alcool,
+
+```{r echo=FALSE, Bivariate_Plots9}
+
+
+ggplot(data=wines, aes(x=residual.sugar, y = total_acidos)) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  xlim(0,25) +
+  scale_y_log10() +
+  geom_smooth(method = lm)
+ 
+```
+
+A relação entre ácidos e açucares tem um formato de V. Niveis de açucar muito baixos tem uma relação linear mais vertical com o total de acidos. Vinhos com niveis de açucar a partir de 2,5 possuem uma relação linear mais horizontal com o total de acido.
+
+
+```{r echo=FALSE, Bivariate_Plots10}
+
+
+ggplot(data=wines, aes(x=fixed.acidity, y = citric.acid)) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  scale_x_log10()  +
+  ylim(0,1) +
+  geom_smooth(method = lm)
+ 
+```
+
+A relação de ácido citrico e ácido fixo parece girar em torno de  um ponto de acidez média para ambos.
+
+
+
+```{r echo=FALSE, Bivariate_Plots12}
+
+ggplot(data=wines, aes(x=volatile.acidity, y = citric.acid)) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  scale_x_log10() +
+  geom_smooth(method = lm)
+```
+
+A relação do ácido citrico e ácido volátil segue uma linearidade. No entanto quando o ácido volátil aumenta muito essa linearidade se perde e os niveis de ácido cítrico caem bastante.
+
+
+```{r echo=FALSE, Bivariate_Plots13}
+
+ggplot(data=wines, aes(x=pH, y = citric.acid)) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  scale_y_log10() +
+  geom_smooth(method = lm)
+```
+
+Parece haver uma certa relação linear entre ácido citrico e ph. Acido citrico se mantem constante conforme ph se altera.
+
+
+```{r echo=FALSE, Bivariate_Plots15}
+
+ggplot(data=wines, aes(x=residual.sugar, y = density )) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  scale_x_log10()  +
+  ylim(0.985,1) +
+  geom_smooth()
+```
+
+Conforme o açucar aumenta mais denso o vinho fica. Isso deve ser explicado pelo peso do açucar.
+
+
+```{r echo=FALSE, Bivariate_Plots17}
+
+ggplot(data=wines, aes(x=density, y = chlorides )) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  geom_smooth(method = lm) +
+   xlim(0.985,1) 
+```
+
+Existe uma corelação forte entre densidade e cloridios. Conforme os cloridios aumentam, a densidade aumenta.
+
+```{r echo=FALSE, Bivariate_Plots18}
+
+ggplot(data=wines, aes(x=sulphates, y = chlorides )) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  geom_smooth(method = lm) +
+  scale_x_log10()
+
+```
+
+A relação entre cloridios e sulfatos também parece ser linerar. Conforme os cloridios aumentam, os sulfatos aumentam.
+
+```{r echo=FALSE, Bivariate_Plots19}
+
+ggplot(data=wines, aes(x=total_acidos, y = chlorides )) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  geom_smooth(method = lm) 
+```
+
+O mesmo ocorre na relação entre cloridios e ácidos totais.
+
+```{r echo=FALSE, Bivariate_Plots20}
+
+ggplot(data=wines, aes(x=alcohol, y = residual.sugar )) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  geom_smooth(method = lm) +
+  ylim(0,40)
+  
+```
+Parece haver uma pequena tendencia entre alcool e açucar. Conforme Alcool aumenta, açucar diminui.
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+
+Após nota 5, Alcool e Ph aumentam conforme a nota de qualidade aumenta. A média do valor de açucar para vinhos brancos não se altera conforme alteramos a qualidade mas a do vinho tinto sim. No entanto não é possível indicar alguma correlação ainda entre quantidade de açucar e qualidade. As maiores relações com qualidade parecem ser entre alcool, densidade, açucar, acidos e cloridios.  As variaveis sozinhas com qualidade não tem correlação muito forte, precisarei avaliar como as caracteristicas quando combinadas alteram a qualidade.
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+Existe uma correlação entre alcool e densidade. Enquanto o total de acido diminiu a nota de qualidade do vinho aumenta para notas acima de 5.
+
+### What was the strongest relationship you found?
+
+Entre alcool e densidade.
+
+
+
+# Multivariate Plots Section
+
+Vou avaliar as variáveis que pareceram ter alguma correlação durante a analise Bivariate.
+```{r echo=FALSE, Multivariate_Plots0}
+#criando quebras pelas médias, ou seja, valores para abaixo da média e acima da media. Para qualidade agrupei vinhos de baixa qualidade, média e alta qualidade.
+wines$nivel_acidez <- cut(wines$total_acidos, breaks = c(0,14.77,32.16))
+wines$nivel_qualidade <- cut(wines$quality, breaks = c(0,5,7,10))
+wines$nivel_cloridios <- cut(wines$chlorides, breaks = c(0,0.05603,0.6100))
+wines$nivel_sulfatos <- cut(wines$sulphates, breaks = c(0,0.5313,2))
+wines$nivel_densidade <- cut(wines$density, breaks = c(0,0.9947,1.0390))
+wines$nivel_alcool <- cut(wines$alcohol, breaks = c(0,10.49,14.90))
+```
+Para os gráficos abaixo ajustei o jitter e niveis de alpha para  visualizar tendencias e previnir overplotting. Também ajustei o limite de alguns eixos para remover outliers. Para as medidas onde identifiquei a necessidade de transformação (log e square root) eu apliquei nos gráficos para melhorar a visualização.
+
+```{r echo=FALSE, Multivariate_Plots1}
+#analisando alcool, denisdade e nivel de acidez
+ggplot(data=wines, aes(y=density, x = alcohol,  color=wines$nivel_acidez)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter" )  +
+  scale_x_sqrt() +
+  ylim(0.985,1.005) 
+
+```
+
+Os vinhos de densidade mais baixa possuem menor nivel de acidez e vinhos com densidade mais alta possuem maiores niveis de acidez. 
+
+```{r echo=FALSE, Multivariate_Plots1.1}
+
+ ggplot(data=wines, aes(y=density, x = alcohol,  color=wines$classe)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter")  +
+  scale_x_sqrt() +
+  ylim(0.985,1.005) 
+
+```
+
+Vinhos mais densos possuem menos açucares, vinhos menos densos são mais secos.
+
+```{r echo=FALSE, Multivariate_Plots1.2}
+
+ggplot(data=wines, aes(y=density, x = alcohol,  color=wines$nivel_qualidade)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter" )  +
+  scale_x_sqrt() +
+  ylim(0.985,1.005) 
+
+```
+
+Quanto mais alcool e menos densidade maior o nivel de qualidade. Vinhos muito densos e com pouco alcool tendem a ser pior avaliados.
+
+```{r echo=FALSE, Multivariate_Plots1.3}
+
+ggplot(data=wines, aes(y=density, x = alcohol,  color=wines$nivel_cloridios)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter" )  +
+  scale_x_sqrt() +
+  ylim(0.985,1.005) 
+
+```
+
+Parece que quanto menos denso e mais alcool o vinho tem, menos cloridios ele possui.
+
+```{r echo=FALSE, Multivariate_Plots1.5}
+
+ggplot(data=wines, aes(y=density, x = alcohol,  color=wines$tipo_vinho)) +
+  geom_point( )  +
+  scale_x_sqrt() +
+  ylim(0.985,1.005) 
+
+```
+
+Os vinhos brancos tem mais alcool e são menos densos que os vinhos tintos no geral.
+
+```{r echo=FALSE, Multivariate_Plots2}
+
+#acçucar vs total acidos
+ggplot(data=wines, aes(x=residual.sugar, y = total_acidos, color=nivel_cloridios)) +  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  xlim(0,25) +
+  scale_y_log10()
+
+
+```
+
+Na relação entre açucar e acidos, os cloridios parecem ter algum efeito. Nos niveis de açucar menor que 2,5 onde a relação entre açucar e acidos é mais vertical o nivel de cloridio é mais alto. Quando o nivel de açucar passa de 2,5 e a relação entre açucar e total de acidos é mais horizontal, os niveis de cloridios são mais baixos.
+
+
+```{r echo=FALSE, Multivariate_Plots2.2}
+
+#acçucar vs total acidos
+ggplot(data=wines, aes(x=residual.sugar, y = total_acidos, color=nivel_densidade)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  xlim(0,25) +
+  scale_y_log10() 
+  
+
+```
+
+Quanto mais açucar maior a densidade, no entanto, onde se tem pouco açucar mas alto volume de acidos a densidade também é alta.
+
+```{r echo=FALSE, Multivariate_Plots2.3}
+
+#acçucar vs total acidos
+ggplot(data=wines, aes(x=residual.sugar, y = total_acidos, color=nivel_alcool)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  xlim(0,25) +
+  scale_y_log10() 
+
+ggplot(data=wines, aes(x=residual.sugar, y = total_acidos, color=nivel_alcool)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  xlim(0,25) +
+  scale_y_log10() +
+  facet_grid(nivel_qualidade ~ .)
+  
+```
+
+Os niveis de alcool são mais altos para menores niveis de açucares e vão diminuindo conforme a quantidade de açucar diminui. Ao quebrar o gráfico pelos niveis de qualidade visualizo que para qualidades mais baixas o nível de alcool tende a permanecer mais baixo independente da quantidade de açucar.
+
+```{r echo=FALSE, Multivariate_Plots3}
+
+#acido citrico e acido fixo
+ggplot(data=wines, aes(x=fixed.acidity, y = citric.acid, color=classe)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  scale_x_log10()  +
+  ylim(0,1) 
+  
+ggplot(data=wines, aes(x=fixed.acidity, y = citric.acid, color=classe)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  scale_x_log10()  +
+  ylim(0,1) +
+  facet_grid(nivel_qualidade ~ .)
+  
+
+ 
+```
+
+A relação entre acido fixo e acido citrico parece ser mais linear para vinhos de qualidade mais altas (2 e 3 gráfico) do que para vinhos de baixa qualidade. Para os vinhos avaliados com maior qualidade, quanto maior o ácido fixo maior os niveis de açucar. Para os vinhos de baixa qualidade, quanto maior o nivel de ácido fixo e menores os niveis de ácido citrico menor parece ser os valores de açucar.
+
+
+```{r echo=FALSE, Multivariate_Plots3.2}
+
+#acido citrico e acido fixo
+ggplot(data=wines, aes(x=fixed.acidity, y = citric.acid, color=nivel_cloridios)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  scale_x_log10()  +
+  ylim(0,1)
+
+ggplot(data=wines, aes(x=fixed.acidity, y = citric.acid, color=nivel_cloridios)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter") +
+  scale_x_log10()  +
+  ylim(0,1) +
+  facet_grid(nivel_qualidade ~ .)
+
+
+ 
+```
+
+Quanto maiores os niveis de acido fixo e acido citrico maior aparenta ser os valores de cloridios.
+Quando fazemos a quebra por qualidade percebe que a relação parece ser mais linear para qualidades mais altas do que para qualidades mais baixas. 
+
+
+
+```{r echo=FALSE, Multivariate_Plots6}
+#acido citrico e acido fixo
+ggplot(data=wines, aes(x=total_acidos, y = density, color = classe)) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  scale_x_log10() +
+  ylim(0.985,1) 
+
+
+```
+
+Quando os niveis de açucar são baixos, parece haver uma relação linear entre densidade e total de acidos. 
+
+```{r echo=FALSE, Multivariate_Plots6.1}
+#acido citrico e acido fixo
+ggplot(data=wines, aes(x=total_acidos, y = density, color = nivel_qualidade)) +
+  geom_point(alpha = 0.09, size = 1.5,position = "jitter") +
+  scale_x_log10() +
+  ylim(0.985,1) 
+
+
+```
+
+Quanto menor os niveis de acido e de densidade, melhores os niveis de qualidade.
+
+
+
+```{r echo=FALSE, Multivariate_Plots7}
+
+#criando corte por quartile
+wines$alcohol.cat <- cut(wines$alcohol, quantile(wines$alcohol, (0:5)/5), include.lowest=T)
+wines$density.cat <- cut(wines$density, quantile(wines$density, (0:5)/5), include.lowest=T)
+
+ggplot(data=wines, aes(x=residual.sugar, y = total_acidos, color = density, fill = alcohol, size = quality ^ 2 )) +  geom_point(shape=21) +
+  scale_x_log10() +
+  #ylim(0.985,1) +
+  scale_color_gradient(low="red", high="green") +
+  scale_size_continuous(range=c(1,12)) +
+  facet_grid(wines$alcohol.cat ~ wines$density.cat)
+
+```
+
+Tem muita coisa acontecendo nesse gráfico mas o que mais me chama a atenção é nos quadrante de alta densidade e baixo alcool a qualidade tende a ser menor do que nos quadrantes de baixa densidade e alto alcool.
+
+
+```{r echo=FALSE, Multivariate_Plots8}
+
+high_quality <- subset(wines, quality >= 8)
+st_wines <- data.frame(high_quality[5], high_quality[6], high_quality[8],  high_quality[9],high_quality[10], high_quality[12], high_quality[16])
+
+
+st_wines <- data.Normalization (st_wines,type="n4",normalization="column")
+k <- blue2red(8)
+x <- high_quality$quality
+
+parcoord(st_wines,lty = 8, col=k[as.numeric(x)], var.label=TRUE)
+
+```
+
+
+```{r echo=FALSE, Multivariate_Plots8.1}
+
+poor_quality <- subset(wines, quality <=4)
+st_wines <- data.frame(poor_quality[5], poor_quality[6], poor_quality[8],  poor_quality[9],poor_quality[10], poor_quality[12], poor_quality[16])
+
+
+st_wines <- data.Normalization (st_wines,type="n4",normalization="column")
+k <- blue2red(6)
+x <- poor_quality$quality
+
+parcoord(st_wines,lty = 8, col=k[as.numeric(x)], var.label=TRUE)
+
+```
+
+O primeiro gráfico mostra a relação entre as variáveis para os vinhos de qualidade 7 a 9. O Segundo gráfico mostra a relação entre as variáveis para os vinhos de qualidade 2 a 4. O que percebo é que existe um padrão nas relações para os vinhos de maior qualidade, para os vinhos de menor qualidade as linhas se cruzam muito mostrando uma falta de padrão.
+ 
+
+
+```{r echo=FALSE, Multivariate_Plots9}
+
+ggplot(subset(wines, wines$outlier == 'Sim'), aes(quality)) +
+  geom_histogram(stat = 'count')
+
+```
+
+Nas analises univariate fui marcando quem eram os outliers que eu estava eliminando nas visualizações. Ao comprar a qualidade desses outliers percebemos que todos possuem qualidade de média para ruim.
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+Ao olhar as correlações entre as variáveis percebo que todas são relativamente baixa. A maior correlação é entre alcool e densidade. No entanto ao cruzar cada variavel com qualidade é percebido que quanto maior o alcool maior a qualidade, quanto maior o alcool menor a densidade e por consequencia a qualidade. Quanto mais alcool tem o vinho menos acido ele é, mais açucar ele tem e mais cloridios. Quanto menos ácido e denso melhor a qualidade do vinho. Quanto mais ácido maior os niveis de cloridio.
+
+### Were there any interesting or surprising interactions between features?
+O que percebo é que nao existe uma relação linear entre as variáveis e a qualidade. No entanto é na harmonia dos componentes quimicos que a qualidade é percebida. Existe um ponto de equilibro entre cada componente para que exista qualidade, quando não existe um padrão ou ponto de equilibrio é onde é percebido uma pior qualidade.
+
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+ggplot(data=wines, aes(y=density, x = alcohol,  color=wines$nivel_qualidade)) +
+  geom_point(alpha = 0.1, size = 1.5,position = "jitter" )  +
+  scale_x_sqrt() +
+  ylim(0.985,1.005) +
+  xlab("Alcohol level (Sqrt % by volume)") +
+  ylab("Density (g/cm^3)") +
+  ggtitle("Relação entre Densidade, Alcool e Qualidade") + 
+  scale_colour_discrete('Nivel qualidade')
+
+```
+
+### Description One
+
+Existe uma forte relação entre álcool e densidade. É a relação mais forte entre todas as variáveis. Quanto maior a quantidade de alcool menor a densidade. Quanto maior a quantidade de alcool, maior é a qualidade percebida do vinho.
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+
+high_quality <- subset(wines, quality >= 8)
+st_wines <- data.frame(high_quality[5], high_quality[6], high_quality[8],  high_quality[9],high_quality[10], high_quality[12], high_quality[16])
+
+
+st_wines <- data.Normalization (st_wines,type="n4",normalization="column")
+k <- blue2red(8)
+x <- high_quality$quality
+print("Parallel Coordinet Plots Best Quality Wines")
+parcoord(st_wines,lty = 8, col=k[as.numeric(x)], var.label=TRUE)
+
+
+poor_quality <- subset(wines, quality <=4)
+st_wines <- data.frame(poor_quality[5], poor_quality[6], poor_quality[8],  poor_quality[9],poor_quality[10], poor_quality[12], poor_quality[16])
+
+
+st_wines <- data.Normalization (st_wines,type="n4",normalization="column")
+k <- blue2red(6)
+x <- poor_quality$quality
+print("Parallel Coordinet Plots Worst Quality Wines")
+parcoord(st_wines,lty = 8, col=k[as.numeric(x)], var.label=TRUE)
+
+```
+
+
+### Description Two
+
+O primeiro gráfico mostra a relação entre as variáveis para os vinhos de qualidade 7 a 9. O Segundo gráfico mostra a relação entre as variáveis para os vinhos de qualidade 2 a 4. O que percebo é que existe um padrão nas relações para os vinhos de maior qualidade, para os vinhos de menor qualidade as linhas se cruzam muito mostrando uma falta de padrão. A conclusão que tiro é que os melhores vinhos tem uma harmonia entre todos os componentes, seguem um certo padrão. Os vinhos de pior qualidade falham nessa harmonia, entendo que não é possivel crirar um modelo linear já que a influência da qualidade do vinho se dá pela junção de vários fatores.
+ 
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+#criando corte por quartile
+wines$alcohol.cat <- cut(wines$alcohol, quantile(wines$alcohol, (0:5)/5), include.lowest=T)
+wines$density.cat <- cut(wines$density, quantile(wines$density, (0:5)/5), include.lowest=T)
+
+ggplot(data=wines, aes(x=residual.sugar, y = total_acidos, color = density, fill = alcohol, size = quality ^ 2 )) +  geom_point(shape=21) +
+  scale_x_log10() +
+  #ylim(0.985,1) +
+  scale_color_gradient(low="red", high="green") +
+  scale_size_continuous(range=c(1,12)) +
+  facet_grid(wines$alcohol.cat ~ wines$density.cat) +
+  xlab("Açucar Residual (log g/cm^3)") +
+  ylab("Ácidos Totais (g/cm^3)") +
+  ggtitle("Relação entre Densidade, Alcool, Qualidade, Açucar e Acidez") 
+  
+```
+
+### Description Three
+Elevei a potencia de 2 a qualidade para que o tamanho das bolas ficassem perceptivelmente diferentes. Nos quadrante de alta densidade e baixo alcool a qualidade tende a ser menor do que nos quadrantes de baixa densidade e alto álcool. Perceb-se a relação entre qualidade, açucar, densidade, acidez e alcool.
+
+------
+
+# Reflection
+
+A maior dificuldade durante essa analise foi a falta de uma correlação muito forte entre as variáveis e entre as variáveis e a qualidade dos vinhos.  Sempre que procurava o que podia explicar a qualidade do vinho não encontrava uma resposta. Foi preciso cruzar muitas variáveis ao mesmo tempo para começar a entender melhor as relações entre as varíáveis. E ao se cruzar muitas variáveis os gráficos ficavam poluidos e confusos.
+
+A falta de amostra de vinhos de maior qualidade também dificultou a analise, basei toda a analise entendendo que vinhos com nota 6 e 7 são bons vinhos mas não acredito que essa seja uma boa prática. Vinhos avaliados com 6 e 7 deveriam ser considerado vinhos medianos e não ótimos vinhos.
+
+Tentei criar um modelo baseado em regressão linear mas como era esperado não deu certo. Acredito que seja necessário o uso de um classificador e um algoritimo de previsão como árvore de decisão ou redes neurais para conseguir prever a nota de um vinho com base nos seus componentes quimicos. 
+
+A minha consluão final é de que é possivel identificar a qualidade de um vinho com base nas suas caracteristicas quimicas mas será necessário algoritimos de aprendizagem de máquina para isso.
